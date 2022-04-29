@@ -8,6 +8,7 @@ import torch
 最后用全连接层将输出形状转为NV。
 """
 
+
 class TestNet(nn.Module):
     def __init__(self):
         super(TestNet, self).__init__()
@@ -51,10 +52,70 @@ class TestNet(nn.Module):
         return out
 
 
+class TestNet2(nn.Module):
+    def __init__(self):
+        super(TestNet2, self).__init__()
+        self.down_layer1 = nn.Sequential(
+            nn.Conv1d(21, 40, 3, 1, 1, bias=False),  # 800
+            nn.BatchNorm1d(40),
+            nn.ReLU(),
+            nn.MaxPool1d(2)  # 400
+        )
+        self.down_layer2 = nn.Sequential(
+            nn.Conv1d(40, 80, 3, 1, 1, bias=False),  # 400
+            nn.BatchNorm1d(80),
+            nn.ReLU(),
+            nn.MaxPool1d(2)  # 200
+        )
+        self.mid_layer = nn.Sequential(
+            nn.Conv1d(80, 160, 3, 2, 1, bias=False),  # 100
+            nn.BatchNorm1d(160),
+            nn.ReLU()
+        )
+        self.up_layer1 = nn.Sequential(
+            nn.ConvTranspose1d(160, 80, 3, 2, 1, output_padding=1, bias=False),  # 200
+            nn.BatchNorm1d(80),
+            nn.ReLU()
+        )
+        self.up_layer2 = nn.Sequential(
+            nn.ConvTranspose1d(160, 40, 3, 2, 1, output_padding=1, bias=False),  # 400
+            nn.BatchNorm1d(40),
+            nn.ReLU()
+        )
+        self.up_layer3 = nn.Sequential(
+            nn.ConvTranspose1d(80, 21, 3, 2, 1, output_padding=1, bias=False),  # 800
+            nn.BatchNorm1d(21),
+            nn.ReLU()
+        )
+
+    def forward(self, x):
+        down1 = self.down_layer1(x)
+        down2 = self.down_layer2(down1)
+        mid = self.mid_layer(down2)
+        up1 = self.up_layer1(mid)
+        up2 = self.up_layer2(torch.cat((down2, up1), dim=1))
+        up3 = self.up_layer3(torch.cat((down1, up2), dim=1))
+        return up3
+
+
+class FeatureNet(nn.Module):
+    def __init__(self):
+        super(FeatureNet, self).__init__()
+        self.mask = TestNet2()
+        self.classify = TestNet()
+
+    def forward(self, x):
+        mask = self.mask(x)
+        mean = torch.mean(mask)
+        mask = torch.where(mask > mean, 1, 0)
+        feature_seq = x * mask
+        classify = self.classify(feature_seq)
+        return mask, classify
+
+
 if __name__ == '__main__':
-    x = torch.randn(2, 21, 742)
-    net = TestNet()
-    # y1, y2, y3, y4, y5 = net(x)
-    # print(y1.shape, y2.shape, y3.shape, y4.shape, y5.shape)
-    y = net(x)
-    print(y.shape)
+    x = torch.randn(2, 21, 800)
+    net = FeatureNet()
+    mask, classify = net(x)
+    print(mask)
+    print(mask.shape, classify.shape)

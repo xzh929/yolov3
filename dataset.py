@@ -28,6 +28,17 @@ def amino_one_hot(encode_data):  # 对序列进行one-hot编码
         encode.append(i)
     return np.stack(encode)
 
+def anti_one_hot(decode_data):
+    amino_acid_encode = []
+    encode = []
+    for i, amino_acid in enumerate(amino_acid_str):
+        zero = np.zeros(21, dtype=np.int32)
+        zero[i] = 1
+        amino_acid_encode.append(zero)
+    amino_acid_encode.append(np.zeros(21, dtype=np.int32))
+    amino_acid_encode = np.stack(amino_acid_encode)  # 对原始序列进行编码
+    amino_acid_str1 = amino_acid_str + "0"
+    # for i in decode_data
 
 class Protein_dataset(Dataset):
     def __init__(self, path):
@@ -46,10 +57,13 @@ class Protein_dataset(Dataset):
                 tag = 1
             for line in file.readlines():
                 length = len(line)
+                if length > 800:
+                    continue
                 self.data.append(line)
                 self.tag.append(tag)
                 self.length_list.append(length)
             file.close()
+        # print(max(self.length_list))
         # print(self.data)
         # print(self.tag)
 
@@ -60,8 +74,8 @@ class Protein_dataset(Dataset):
         protein_data = self.data[item]
         protein_tag = self.tag[item]
         max_len = max(self.length_list)
-        if len(protein_data) < max_len:  # 用0补齐序列为最大长度
-            extend_len = max_len - len(protein_data)
+        if len(protein_data) < 800:  # 用0补齐序列为最大长度
+            extend_len = 800 - len(protein_data)
             for i in range(extend_len):
                 protein_data = protein_data + "0"
         protein_data = torch.Tensor(amino_one_hot(protein_data))
@@ -71,15 +85,15 @@ class Protein_dataset(Dataset):
 
 
 if __name__ == '__main__':
-    # train_dataset = Protein_dataset(r"F:\pet\fake_train")
-    # test_dataset = Protein_dataset(r"F:\pet\fake_test")
+    train_dataset = Protein_dataset(r"F:\pet\fake_train")
+    test_dataset = Protein_dataset(r"F:\pet\fake_test")
     real_dataset = Protein_dataset(r"F:\pet\real_test")
     # print(len(train_dataset))
-    print(len(real_dataset))
-    # data1, tag1 = train_dataset[90]
+    # print(len(real_dataset))
+    data1, tag1 = train_dataset[60]
     # data2, tag2 = test_dataset[90]
-    for i, (data, tag) in enumerate(real_dataset):
-        print(data, tag)
+    # for i, (data, tag) in enumerate(real_dataset):
+    #     print(data, tag)
     # print(data1, tag1)
-    # print(data1.shape, tag1.shape)
+    print(data1.shape, tag1.shape)
     # print(data2.shape, tag2.shape)

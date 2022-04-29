@@ -1,11 +1,13 @@
+from sklearn.metrics import roc_auc_score
 import torch
-from functools import reduce
 
-# a = torch.randn(2,583,20)
-# a1 = torch.permute(a,(0,2,1))
-# print(a1.shape)
-
-a = ["1", "2", "3"]
-b = reduce(lambda x, y: x + y, a)
-c = "".join(a)
-print(b, c)
+a = torch.tensor([
+    [[0, 0, 0], [0, 1, 0]],
+    [[0, 0, 0], [0, 1, 0]]
+])
+x = 1
+for i in a:
+    for seq in i:
+        print(x)
+        print(seq)
+        x += 1
