@@ -1,5 +1,5 @@
 from net import FeatureNet
-from dataset import Protein_dataset
+from dataset import Protein_dataset, anti_one_hot
 from torch.utils.data import DataLoader
 from torch import optim
 from torch import nn
@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 
 test_dataset = Protein_dataset(r"F:\pet\real_test")
 test_loader = DataLoader(test_dataset, batch_size=45, shuffle=True)
+
+real_train_dataset = Protein_dataset(r"F:\pet\real_train")
+real_train_loader = DataLoader(real_train_dataset, batch_size=150, shuffle=True)
 
 net = FeatureNet()
 opt = optim.SGD(net.parameters(), lr=0.01, momentum=0.9)
@@ -27,15 +30,24 @@ def Test():
     test_score_sum = 0.
     test_loss_sum = 0.
     net.eval()
-    for i, (data, tag) in enumerate(test_loader):
+    for i, (data, tag) in enumerate(real_train_loader):
         test_data = torch.permute(data, (0, 2, 1))
         test_mask, test_out_tag = net(test_data)
         test_loss = loss_func(test_out_tag, tag)
 
-        feature_seq = torch.permute(test_data * test_mask, (0, 2, 1))
+        anti_seq = anti_one_hot(test_data.permute(0, 2, 1))
+        for mask, seq, pre in zip(test_mask, anti_seq, test_out_tag):
+            idx = torch.argmax(mask)
+            pre = torch.argmax(pre).item()
+            feature_seq = seq[idx - 5:idx + 5]
+            if pre == 1:
+                print(feature_seq, pre)
 
         test_out = nn.Softmax(dim=1)(test_out_tag)
+        test_out2 = torch.argmax(test_out, dim=1)
         test_out1 = torch.argmax(test_out, dim=1).detach().cpu().numpy()
+        index = torch.nonzero(test_out2)
+        index = index.squeeze()
         test_score = torch.mean(torch.eq(torch.argmax(test_out, dim=1), tag).float())
         test_score_sum += test_score.item()
         test_loss_sum += test_loss.item()

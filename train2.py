@@ -6,6 +6,7 @@ from torch import nn
 import torch
 from sklearn import metrics
 import os
+from torch.utils.tensorboard import SummaryWriter
 
 train_dataset = Protein_dataset(r"F:\pet\fake_train")
 train_loader = DataLoader(train_dataset, batch_size=20, shuffle=True)
@@ -16,11 +17,13 @@ test_loader = DataLoader(test_dataset, batch_size=20, shuffle=True)
 real_train_dataset = Protein_dataset(r"F:\pet\real_train")
 real_train_loader = DataLoader(real_train_dataset, batch_size=20, shuffle=True)
 
+summary = SummaryWriter("logs")
 net = FeatureNet().cuda()
 opt = optim.SGD(net.parameters(), lr=0.01, momentum=0.9)
 loss_func = nn.CrossEntropyLoss()
 
 module_path = "module/protein2.pth"
+
 
 def Train():
     if os.path.exists(module_path):
@@ -29,7 +32,9 @@ def Train():
     else:
         print("no module")
 
-    for epoch in range(100):
+    init_acc = 0.
+
+    for epoch in range(200):
         sum_train_loss = 0.
         sum_accuracy = 0.
         for i, (data, tag) in enumerate(real_train_loader):
@@ -46,13 +51,17 @@ def Train():
             pre_tag = torch.argmax(train_out_tag, dim=1)
             pre_tag = pre_tag.detach().cpu().numpy()
             train_tag = train_tag.detach().cpu().numpy()
-            accuracy = metrics.accuracy_score(train_tag,pre_tag)
+            accuracy = metrics.accuracy_score(train_tag, pre_tag)
             sum_accuracy += accuracy
         avg_train_loss = sum_train_loss / len(real_train_loader)
         avg_accuracy = sum_accuracy / len(real_train_loader)
+        summary.add_scalar("loss", avg_train_loss, epoch)
+        summary.add_scalar("accuracy", avg_accuracy, epoch)
         print("train_loss:{0} train_accuracy:{1}".format(avg_train_loss, avg_accuracy))
-        torch.save(net.state_dict(), module_path)
-        print("save success")
+        if avg_accuracy > init_acc:
+            init_acc = avg_accuracy
+            torch.save(net.state_dict(), module_path)
+            print("save success")
 
 
 if __name__ == '__main__':

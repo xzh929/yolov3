@@ -56,35 +56,35 @@ class TestNet2(nn.Module):
     def __init__(self):
         super(TestNet2, self).__init__()
         self.down_layer1 = nn.Sequential(
-            nn.Conv1d(21, 40, 3, 1, 1, bias=False),  # 800
-            nn.BatchNorm1d(40),
+            nn.Conv1d(21, 16, 3, 1, 1, bias=False),  # 800
+            nn.BatchNorm1d(16),
             nn.ReLU(),
             nn.MaxPool1d(2)  # 400
         )
         self.down_layer2 = nn.Sequential(
-            nn.Conv1d(40, 80, 3, 1, 1, bias=False),  # 400
-            nn.BatchNorm1d(80),
+            nn.Conv1d(16, 16, 3, 1, 1, bias=False),  # 400
+            nn.BatchNorm1d(16),
             nn.ReLU(),
             nn.MaxPool1d(2)  # 200
         )
         self.mid_layer = nn.Sequential(
-            nn.Conv1d(80, 160, 3, 2, 1, bias=False),  # 100
-            nn.BatchNorm1d(160),
+            nn.Conv1d(16, 32, 3, 2, 1, bias=False),  # 100
+            nn.BatchNorm1d(32),
             nn.ReLU()
         )
         self.up_layer1 = nn.Sequential(
-            nn.ConvTranspose1d(160, 80, 3, 2, 1, output_padding=1, bias=False),  # 200
-            nn.BatchNorm1d(80),
+            nn.ConvTranspose1d(32, 16, 3, 2, 1, output_padding=1, bias=False),  # 200
+            nn.BatchNorm1d(16),
             nn.ReLU()
         )
         self.up_layer2 = nn.Sequential(
-            nn.ConvTranspose1d(160, 40, 3, 2, 1, output_padding=1, bias=False),  # 400
-            nn.BatchNorm1d(40),
+            nn.ConvTranspose1d(32, 16, 3, 2, 1, output_padding=1, bias=False),  # 400
+            nn.BatchNorm1d(16),
             nn.ReLU()
         )
         self.up_layer3 = nn.Sequential(
-            nn.ConvTranspose1d(80, 21, 3, 2, 1, output_padding=1, bias=False),  # 800
-            nn.BatchNorm1d(21),
+            nn.ConvTranspose1d(32, 1, 3, 2, 1, output_padding=1, bias=False),  # 800
+            nn.BatchNorm1d(1),
             nn.ReLU()
         )
 
@@ -103,11 +103,11 @@ class FeatureNet(nn.Module):
         super(FeatureNet, self).__init__()
         self.mask = TestNet2()
         self.classify = TestNet()
+        self.softmax = nn.Softmax(dim=2)
 
     def forward(self, x):
         mask = self.mask(x)
-        mean = torch.mean(mask)
-        mask = torch.where(mask > mean, 1, 0)
+        mask = self.softmax(mask)
         feature_seq = x * mask
         classify = self.classify(feature_seq)
         return mask, classify
@@ -116,6 +116,10 @@ class FeatureNet(nn.Module):
 if __name__ == '__main__':
     x = torch.randn(2, 21, 800)
     net = FeatureNet()
+    # net1 = TestNet2()
     mask, classify = net(x)
+    mask = mask.squeeze()
+    # out = net1(x)
     print(mask)
     print(mask.shape, classify.shape)
+    # print(out.shape)

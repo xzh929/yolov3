@@ -1,4 +1,4 @@
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms as t
 import torch
 import os
@@ -28,9 +28,10 @@ def amino_one_hot(encode_data):  # 对序列进行one-hot编码
         encode.append(i)
     return np.stack(encode)
 
+
 def anti_one_hot(decode_data):
     amino_acid_encode = []
-    encode = []
+    decode_all = []
     for i, amino_acid in enumerate(amino_acid_str):
         zero = np.zeros(21, dtype=np.int32)
         zero[i] = 1
@@ -38,7 +39,25 @@ def anti_one_hot(decode_data):
     amino_acid_encode.append(np.zeros(21, dtype=np.int32))
     amino_acid_encode = np.stack(amino_acid_encode)  # 对原始序列进行编码
     amino_acid_str1 = amino_acid_str + "0"
-    # for i in decode_data
+    c, l, v = decode_data.shape
+    zero = torch.zeros(21)
+    for y in range(c):
+        decode = []
+        for x in decode_data[y, :]:
+            if x.equal(zero):
+                amino = "0"
+            else:
+                index = torch.argmax(x).item()
+                amino = amino_acid_str1[index]
+            decode.append(amino)
+        for z in range(len(decode) - 1, -1, -1):
+            if decode[z] == "0":
+                decode.remove("0")
+        amino_acid_decode = "".join(decode)
+        decode_all.append(amino_acid_decode)
+    # decode_all = "".join(decode_all)
+    return decode_all
+
 
 class Protein_dataset(Dataset):
     def __init__(self, path):
@@ -90,10 +109,14 @@ if __name__ == '__main__':
     real_dataset = Protein_dataset(r"F:\pet\real_test")
     # print(len(train_dataset))
     # print(len(real_dataset))
-    data1, tag1 = train_dataset[60]
+    # data1, tag1 = train_dataset[60]
     # data2, tag2 = test_dataset[90]
-    # for i, (data, tag) in enumerate(real_dataset):
-    #     print(data, tag)
+    load = DataLoader(real_dataset, batch_size=10)
+    for i, (data, tag) in enumerate(load):
+        anti = anti_one_hot(data)
+        print(anti)
+        exit()
+        # print(data, tag)
     # print(data1, tag1)
-    print(data1.shape, tag1.shape)
+    # print(data1.shape, tag1.shape)
     # print(data2.shape, tag2.shape)
